@@ -1,0 +1,87 @@
+import 'dotenv/config'; 
+import { PrismaClient, TxType, TxStatus } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
+
+
+const connectionString = process.env.DATABASE_URL;
+const pool = new Pool({ 
+  connectionString,
+  ssl: {
+    rejectUnauthorized: false,
+  },
+});
+console.log('Pool created with SSL rejectUnauthorized: false');
+const adapter = new PrismaPg(pool as any);
+const prisma = new PrismaClient({ adapter });
+
+async function main() {
+  console.log('Clearing old data...');
+  await prisma.transaction.deleteMany();
+  await prisma.asset.deleteMany();
+  await prisma.user.deleteMany();
+
+  console.log('Seeding Institutional Profile...');
+
+  
+  const user = await prisma.user.create({
+    data: {
+      email: 'trader@aurora.io',
+      fullName: 'Institutional Active',
+      passwordHash: 'hashed_password_placeholder',
+      usdBalance: 1420552.0,
+
+      
+      assets: {
+        create: [
+          { symbol: 'BTC', amount: 12.4402, totalCost: 650000.0 }, 
+          { symbol: 'ETH', amount: 24.812, totalCost: 60000.0 },   
+          { symbol: 'SOL', amount: 1240.5, totalCost: 150000.0 },  
+        ],
+      },
+
+      
+      transactions: {
+        create: [
+          {
+            type: TxType.DEPOSIT,
+            assetSymbol: 'USD',
+            amount: 250000.0,
+            priceAtTime: 1.0,
+            fee: 0,
+            status: TxStatus.COMPLETED,
+          },
+          {
+            type: TxType.BUY,
+            assetSymbol: 'BTC',
+            amount: 1.24021,
+            priceAtTime: 64281.45,
+            fee: 12.45,
+            status: TxStatus.COMPLETED,
+          },
+          {
+            type: TxType.SELL,
+            assetSymbol: 'ETH',
+            amount: 42.5,
+            priceAtTime: 3412.55,
+            fee: 15.42,
+            status: TxStatus.COMPLETED,
+          },
+        ],
+      },
+    },
+  });
+
+  console.log(`✅ Successfully seeded database for user: ${user.email}`);
+  console.log(`🔥 IMPORTANT! Copy this User ID for Angular: ${user.id}`); 
+}
+
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+    await pool.end();
+  });

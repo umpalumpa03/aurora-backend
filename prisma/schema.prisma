@@ -1,0 +1,74 @@
+
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+
+
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  passwordHash String
+  fullName     String
+  usdBalance   Float         @default(0.0) 
+  
+  assets       Asset[]       
+  transactions Transaction[] 
+  
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+
+
+
+model Asset {
+  id        String   @id @default(uuid())
+  userId    String
+  symbol    String   
+  amount    Float    @default(0.0)
+  totalCost Float    @default(0.0) 
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, symbol]) 
+}
+
+
+
+
+model Transaction {
+  id          String   @id @default(uuid())
+  userId      String
+  
+  type        TxType   
+  assetSymbol String   
+  amount      Float    
+  priceAtTime Float?   
+  fee         Float    @default(0.0)
+  status      TxStatus @default(COMPLETED)
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+}
+
+
+enum TxType {
+  BUY
+  SELL
+  DEPOSIT
+  WITHDRAW
+}
+
+enum TxStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
